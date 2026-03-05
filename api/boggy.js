@@ -8,10 +8,18 @@ export default async function handler(req, res) {
   if(!wallet) return res.status(400).json({error:"缺少 wallet"});
 
   try{
-    // Call GoldRush API
     const url = `https://api.goldrush.dev/v1/chains/apechain-mainnet/nfts/${wallet}?apikey=${API_KEY}`;
     const r = await fetch(url);
-    const data = await r.json();
+
+    // 先抓文字，不直接 parse
+    const text = await r.text();
+    let data;
+
+    try{
+      data = JSON.parse(text);
+    } catch(e){
+      return res.status(500).json({error:"GoldRush API 沒回 JSON，內容: " + text});
+    }
 
     // 過濾 BOGGY NFT
     const boggyNFTs = data.data ? data.data.filter(nft => nft.contract_address.toLowerCase() === BOGGY_CONTRACT.toLowerCase()) : [];
