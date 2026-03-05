@@ -12,19 +12,24 @@ pre { background: #fff; padding: 10px; border: 1px solid #ccc; white-space: pre-
 <body>
 
 <h2>BOGGY Trait Analyzer</h2>
+
 <p>輸入錢包地址：</p>
 <input id="wallet" placeholder="0x...">
 <br>
 <button onclick="analyze()">Analyze</button>
+
 <pre id="output"></pre>
 
 <script>
+const BOGGY_CONTRACT = "0x5d0563ff947f4ed596a4dAa6F2BE00f4f326b0bc";
 const gateways = ["https://ipfs.io/ipfs/", "https://cloudflare-ipfs.com/ipfs/"];
 
+// IPFS URI 轉 HTTP
 function ipfsToHttp(uri){
   return uri.startsWith("ipfs://") ? uri.replace("ipfs://","") : uri;
 }
 
+// 從 IPFS 讀 JSON
 async function fetchIPFS(cid){
   for(const g of gateways){
     try{
@@ -35,6 +40,17 @@ async function fetchIPFS(cid){
   throw new Error("IPFS 讀取失敗");
 }
 
+// 取得錢包 BOGGY NFT
+async function getNFTs(wallet){
+  const url = `https://api.apescan.io/v1/nft/owned?address=${wallet}&chain_id=33139`; // ApeChain chainID
+  const res = await fetch(url);
+  if(!res.ok) throw new Error("ApeScan API 請求失敗");
+  const data = await res.json();
+  // 過濾 BOGGY NFT
+  return data.data ? data.data.filter(nft => nft.contract_address.toLowerCase() === BOGGY_CONTRACT.toLowerCase()) : [];
+}
+
+// 分析函式
 async function analyze(){
   const wallet = document.getElementById("wallet").value.trim();
   if(!wallet) return alert("請輸入錢包地址");
@@ -43,16 +59,14 @@ async function analyze(){
   out.textContent = "分析中，請稍候...";
 
   try{
-    const res = await fetch(`/api/boggy.js?wallet=${wallet}`);
-    const data = await res.json();
-
-    if(!data.nfts || data.nfts.length===0){
+    const nfts = await getNFTs(wallet);
+    if(nfts.length === 0){
       out.textContent = "該錢包沒有 BOGGY NFT";
       return;
     }
 
     const traits = {};
-    for(const nft of data.nfts){
+    for(const nft of nfts){
       if(!nft.token_uri) continue;
       try{
         const meta = await fetchIPFS(ipfsToHttp(nft.token_uri));
@@ -64,7 +78,7 @@ async function analyze(){
       }catch{}
     }
 
-    let result = `錢包：${wallet}\nBOGGY NFT 數量：${data.nfts.length}\n\nTraits 統計:\n`;
+    let result = `錢包：${wallet}\nBOGGY NFT 數量：${nfts.length}\n\nTraits 統計:\n`;
     for(const k in traits) result += `${k} → ${traits[k]}\n`;
     out.textContent = result;
 
