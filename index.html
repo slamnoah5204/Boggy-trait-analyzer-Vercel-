@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BOGGY Trait Analyzer</title>
+<style>
+  body { font-family: Arial; padding: 20px; background: #f0f0f0; }
+  input, button { padding: 8px; margin: 5px 0; }
+  pre { background: #fff; padding: 10px; border: 1px solid #ccc; }
+</style>
+</head>
+<body>
+<h1>BOGGY Trait Analyzer</h1>
+<p>輸入錢包地址查 BOGGY NFT 特徵統計</p>
+<input type="text" id="wallet" placeholder="Wallet address">
+<button onclick="analyze()">Analyze</button>
+<pre id="output"></pre>
+
+<script>
+async function analyze() {
+    const wallet = document.getElementById('wallet').value.trim();
+    if(!wallet) {
+        alert("請輸入錢包地址");
+        return;
+    }
+
+    document.getElementById('output').textContent = "分析中...";
+
+    try {
+        const res = await fetch(`/api/boggy?wallet=${wallet}`);
+        if(!res.ok) throw new Error("Server error");
+        const data = await res.json();
+        let output = `錢包: ${data.wallet}\n總 BOGGY: ${data.totalBoggy}\n\nTraits:\n`;
+        for(const [trait, count] of Object.entries(data.traits)) {
+            output += `${trait} → ${count}\n`;
+        }
+        document.getElementById('output').textContent = output;
+    } catch(e) {
+        document.getElementById('output').textContent = "分析失敗：" + e.message;
+    }
+}
+</script>
+</body>
+</html>
